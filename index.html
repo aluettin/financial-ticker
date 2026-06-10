@@ -488,6 +488,161 @@
 
   .hero-search .search-icon { color: #475569; }
 
+  /* ── Panel Tabs ── */
+  .panel-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .panel-tab {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 6px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font);
+    color: #64748b;
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+
+  .panel-tab:hover { color: #94a3b8; background: rgba(255,255,255,.05); }
+
+  .panel-tab.active {
+    background: rgba(29,78,216,.25);
+    border-color: rgba(29,78,216,.5);
+    color: #93c5fd;
+  }
+
+  /* ── Portfolio ── */
+  .portfolio-card { padding: 20px 24px 0; }
+
+  .portfolio-add-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .portfolio-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .portfolio-empty {
+    text-align: center;
+    color: #475569;
+    font-size: 13px;
+    padding: 28px 0;
+  }
+
+  .portfolio-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    gap: 12px;
+    animation: fadeUp .2s ease;
+  }
+
+  .portfolio-row:last-child { border-bottom: none; }
+
+  .portfolio-sym {
+    font-size: 14px;
+    font-weight: 700;
+    color: #e2e8f0;
+    letter-spacing: .04em;
+    min-width: 80px;
+  }
+
+  .portfolio-name {
+    font-size: 12px;
+    color: #475569;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .portfolio-price {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f1f5f9;
+    font-variant-numeric: tabular-nums;
+    min-width: 80px;
+    text-align: right;
+  }
+
+  .portfolio-chg {
+    font-size: 12.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    padding: 2px 8px;
+    border-radius: 4px;
+    min-width: 100px;
+    text-align: center;
+  }
+
+  .portfolio-chg.pos { color: #34d399; background: rgba(52,211,153,.12); }
+  .portfolio-chg.neg { color: #f87171; background: rgba(248,113,113,.12); }
+  .portfolio-chg.neu { color: #64748b; }
+
+  .portfolio-remove {
+    background: none;
+    border: none;
+    color: #334155;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color .15s, background .15s;
+    display: flex;
+    align-items: center;
+  }
+
+  .portfolio-remove:hover { color: #f87171; background: rgba(248,113,113,.1); }
+
+  .portfolio-loading {
+    color: #475569;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .portfolio-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-top: 1px solid rgba(255,255,255,.06);
+    margin-top: 4px;
+  }
+
+  .portfolio-count { font-size: 12px; color: #475569; }
+
+  .portfolio-refresh-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 6px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font);
+    padding: 5px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color .15s, border-color .15s;
+  }
+
+  .portfolio-refresh-btn:hover { color: #93c5fd; border-color: rgba(29,78,216,.4); }
+
   /* ── Search Section ── */
   .search-section {
     padding: 56px 0 0;
@@ -950,6 +1105,10 @@
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#fff" stroke-width="1.8"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
           Look Up a Symbol
         </button>
+        <button class="btn-ghost" id="myStocksBtn" onclick="togglePortfolio()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/><line x1="5" y1="3" x2="5" y2="14" stroke="currentColor" stroke-width="1.7"/><line x1="8" y1="6" x2="12" y2="6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="8" y1="9" x2="11" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          My Stocks
+        </button>
       </div>
     </div>
 
@@ -1065,7 +1224,15 @@
   <!-- Search (inside hero, above stats) -->
   <div class="hero-search">
     <div class="hero-search-inner">
-      <div class="search-card">
+
+      <!-- Tab bar -->
+      <div class="panel-tabs">
+        <button class="panel-tab active" id="tabSearch" onclick="switchTab('search')">Symbol Lookup</button>
+        <button class="panel-tab" id="tabPortfolio" onclick="switchTab('portfolio')">My Stocks</button>
+      </div>
+
+      <!-- Search panel -->
+      <div id="panelSearch" class="search-card">
         <div class="search-row">
           <div class="search-input-wrap">
             <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -1098,6 +1265,44 @@
           <span class="search-hint-chip" onclick="quickSearch('BINANCE:BTCUSDT')">BTC</span>
         </div>
       </div>
+
+      <!-- Portfolio panel (hidden by default) -->
+      <div id="panelPortfolio" class="search-card portfolio-card" style="display:none;">
+        <div class="portfolio-add-row">
+          <div class="search-input-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="6.5" cy="6.5" r="5" stroke="#9ca3af" stroke-width="1.7"/>
+              <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#9ca3af" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <input
+              class="search-input"
+              id="portfolioInput"
+              type="text"
+              placeholder="Add a symbol — AAPL, TSLA, NVDA…"
+              maxlength="20"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="characters"
+              spellcheck="false"
+            />
+          </div>
+          <button class="search-btn" onclick="addToPortfolio()">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><line x1="8" y1="2" x2="8" y2="14" stroke="#fff" stroke-width="2" stroke-linecap="round"/><line x1="2" y1="8" x2="14" y2="8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+            Add
+          </button>
+        </div>
+        <div id="portfolioList" class="portfolio-list">
+          <div class="portfolio-empty">No stocks added yet. Search for a symbol above to get started.</div>
+        </div>
+        <div class="portfolio-footer">
+          <span id="portfolioCount" class="portfolio-count"></span>
+          <button class="portfolio-refresh-btn" onclick="refreshPortfolio()">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5c1.8 0 3.4.87 4.4 2.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><polyline points="12,1 12.5,4.7 9,4.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -1331,6 +1536,167 @@
   });
 
   document.getElementById('searchInput').addEventListener('input', function() {
+    const pos = this.selectionStart;
+    this.value = this.value.toUpperCase();
+    this.setSelectionRange(pos, pos);
+  });
+
+  /* ── Tab switching ── */
+  function switchTab(tab) {
+    const isPortfolio = tab === 'portfolio';
+    document.getElementById('panelSearch').style.display     = isPortfolio ? 'none' : 'block';
+    document.getElementById('panelPortfolio').style.display  = isPortfolio ? 'block' : 'none';
+    document.getElementById('tabSearch').classList.toggle('active', !isPortfolio);
+    document.getElementById('tabPortfolio').classList.toggle('active', isPortfolio);
+    document.getElementById('myStocksBtn').classList.toggle('active-nav', isPortfolio);
+    if (isPortfolio) renderPortfolio();
+  }
+
+  function togglePortfolio() {
+    const isVisible = document.getElementById('panelPortfolio').style.display !== 'none';
+    switchTab(isVisible ? 'search' : 'portfolio');
+    if (!isVisible) {
+      document.getElementById('portfolioInput').focus();
+    }
+  }
+
+  /* ── Portfolio storage ── */
+  const STORAGE_KEY = 'marketticker_portfolio';
+
+  function loadPortfolioSymbols() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function savePortfolioSymbols(syms) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(syms));
+  }
+
+  /* ── Portfolio UI ── */
+  async function addToPortfolio() {
+    const input  = document.getElementById('portfolioInput');
+    const symbol = input.value.trim().toUpperCase();
+    if (!symbol) { input.focus(); return; }
+
+    const syms = loadPortfolioSymbols();
+    if (syms.includes(symbol)) {
+      input.value = '';
+      input.focus();
+      return;
+    }
+
+    // Validate by fetching
+    const list = document.getElementById('portfolioList');
+    const tmpId = `tmp-${Date.now()}`;
+    list.insertAdjacentHTML('afterbegin', `
+      <div class="portfolio-row" id="${tmpId}">
+        <span class="portfolio-sym">${symbol}</span>
+        <span class="portfolio-loading"><span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Loading…</span>
+      </div>`);
+
+    try {
+      const data = await fetchQuote(symbol);
+      document.getElementById(tmpId)?.remove();
+      syms.push(symbol);
+      savePortfolioSymbols(syms);
+      input.value = '';
+      renderPortfolioRow(symbol, data, true);
+      updatePortfolioCount();
+    } catch (err) {
+      document.getElementById(tmpId)?.remove();
+      input.value = '';
+      input.placeholder = `"${symbol}" not found`;
+      setTimeout(() => { input.placeholder = 'Add a symbol — AAPL, TSLA, NVDA…'; }, 2500);
+    }
+    input.focus();
+  }
+
+  function removeFromPortfolio(symbol) {
+    const syms = loadPortfolioSymbols().filter(s => s !== symbol);
+    savePortfolioSymbols(syms);
+    document.getElementById(`prow-${symbol}`)?.remove();
+    updatePortfolioCount();
+    if (syms.length === 0) showPortfolioEmpty();
+  }
+
+  function showPortfolioEmpty() {
+    document.getElementById('portfolioList').innerHTML =
+      '<div class="portfolio-empty">No stocks added yet. Search for a symbol above to get started.</div>';
+  }
+
+  function updatePortfolioCount() {
+    const n = loadPortfolioSymbols().length;
+    document.getElementById('portfolioCount').textContent = n > 0 ? `${n} symbol${n !== 1 ? 's' : ''}` : '';
+  }
+
+  function renderPortfolioRow(symbol, data, prepend = false) {
+    const { price, change, pct } = parseQuote(data);
+    const pos = change > 0, neg = change < 0;
+    const cls = pos ? 'pos' : neg ? 'neg' : 'neu';
+    const list = document.getElementById('portfolioList');
+    const html = `
+      <div class="portfolio-row" id="prow-${symbol}">
+        <span class="portfolio-sym">${symbol}</span>
+        <span class="portfolio-price">$${fmt.price(price)}</span>
+        <span class="portfolio-chg ${cls}">${fmt.chg(change)} (${fmt.pct(pct)})</span>
+        <button class="portfolio-remove" onclick="removeFromPortfolio('${symbol}')" title="Remove">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>`;
+    // Clear empty state if present
+    const empty = list.querySelector('.portfolio-empty');
+    if (empty) empty.remove();
+    if (prepend) list.insertAdjacentHTML('afterbegin', html);
+    else         list.insertAdjacentHTML('beforeend', html);
+  }
+
+  async function renderPortfolio() {
+    const syms = loadPortfolioSymbols();
+    const list = document.getElementById('portfolioList');
+    if (syms.length === 0) { showPortfolioEmpty(); updatePortfolioCount(); return; }
+
+    list.innerHTML = syms.map(s => `
+      <div class="portfolio-row" id="prow-${s}">
+        <span class="portfolio-sym">${s}</span>
+        <span class="portfolio-loading"><span class="spinner" style="width:14px;height:14px;border-width:2px;"></span></span>
+      </div>`).join('');
+
+    await Promise.allSettled(syms.map(async sym => {
+      try {
+        const data = await fetchQuote(sym);
+        const row = document.getElementById(`prow-${sym}`);
+        if (!row) return;
+        const { price, change, pct } = parseQuote(data);
+        const pos = change > 0, neg = change < 0;
+        const cls = pos ? 'pos' : neg ? 'neg' : 'neu';
+        row.innerHTML = `
+          <span class="portfolio-sym">${sym}</span>
+          <span class="portfolio-price">$${fmt.price(price)}</span>
+          <span class="portfolio-chg ${cls}">${fmt.chg(change)} (${fmt.pct(pct)})</span>
+          <button class="portfolio-remove" onclick="removeFromPortfolio('${sym}')" title="Remove">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><line x1="3" y1="3" x2="13" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="13" y1="3" x2="3" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>`;
+      } catch {
+        document.getElementById(`prow-${sym}`)?.remove();
+      }
+    }));
+    updatePortfolioCount();
+  }
+
+  async function refreshPortfolio() {
+    const btn = document.querySelector('.portfolio-refresh-btn');
+    btn.disabled = true;
+    btn.style.opacity = '.5';
+    await renderPortfolio();
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+
+  document.getElementById('portfolioInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addToPortfolio();
+  });
+
+  document.getElementById('portfolioInput').addEventListener('input', function() {
     const pos = this.selectionStart;
     this.value = this.value.toUpperCase();
     this.setSelectionRange(pos, pos);
