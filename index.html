@@ -208,7 +208,7 @@
   ══════════════════════════════════════════ */
   .hero {
     position: relative;
-    margin-top: 0;
+    margin-top: 100px; /* ticker 40 + nav 60 */
     width: 100%;
     flex-shrink: 0;
     background: var(--navy);
@@ -438,8 +438,8 @@
      MAIN CONTENT
   ══════════════════════════════════════════ */
   .main {
+    flex: 1;
     background: var(--navy);
-    margin-top: 100px; /* ticker 40 + nav 60 */
   }
 
   .container {
@@ -1135,12 +1135,6 @@
   </div>
 </nav>
 
-<!-- ══ Main ══ -->
-<main class="main">
-  <div id="resultArea" class="result-area-main"></div>
-
-</main>
-
 <!-- ══ Hero ══ -->
 <section class="hero">
   <div class="hero-inner">
@@ -1382,6 +1376,12 @@
     </div>
   </div>
 </section>
+
+<!-- ══ Main ══ -->
+<main class="main">
+  <div id="resultArea" class="result-area-main"></div>
+
+</main>
 
 <!-- ══ Footer ══ -->
 <footer class="footer">
