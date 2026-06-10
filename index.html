@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MarketTicker — Real-Time Financial Data</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:      #0b0f1a;
+    --navy2:     #111827;
+    --navy3:     #1e293b;
+    --bg:        #f8f9fc;
+    --surface:   #ffffff;
+    --border:    #e5e7eb;
+    --border2:   #d1d5db;
+    --text:      #111827;
+    --text2:     #374151;
+    --muted:     #6b7280;
+    --muted2:    #9ca3af;
+    --accent:    #1d4ed8;
+    --accent-h:  #1e40af;
+    --accent-lt: #eff6ff;
+    --green:     #059669;
+    --green-dim: #ecfdf5;
+    --red:       #dc2626;
+    --red-dim:   #fef2f2;
+    --radius:    8px;
+    --shadow:    0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -1px rgba(0,0,0,.05);
+    --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ══════════════════════════════════════════
+     TICKER BAR
+  ══════════════════════════════════════════ */
+  .ticker-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 200;
+    background: var(--navy);
+    height: 40px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+
+  .ticker-track-wrapper { display: flex; width: 100%; overflow: hidden; }
+
+  .ticker-track {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    animation: scroll-left 38s linear infinite;
+    will-change: transform;
+  }
+
+  .ticker-track:hover { animation-play-state: paused; }
+
+  @keyframes scroll-left {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .ticker-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 24px;
+    border-right: 1px solid rgba(255,255,255,.08);
+    font-size: 12.5px;
+  }
+
+  .ticker-symbol {
+    font-weight: 700;
+    color: #e2e8f0;
+    letter-spacing: .06em;
+    font-size: 12px;
+  }
+
+  .ticker-price {
+    color: #cbd5e1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ticker-change {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 11.5px;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+
+  .ticker-change.pos { color: #34d399; background: rgba(52,211,153,.12); }
+  .ticker-change.neg { color: #f87171; background: rgba(248,113,113,.12); }
+  .ticker-change.neu { color: #94a3b8; }
+
+  .ticker-skeleton {
+    color: #475569;
+    font-size: 12px;
+    padding: 0 24px;
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+  /* ══════════════════════════════════════════
+     NAV
+  ══════════════════════════════════════════ */
+  .nav {
+    position: fixed;
+    top: 40px; left: 0; right: 0;
+    z-index: 150;
+    background: var(--navy2);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    height: 60px;
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    text-decoration: none;
+  }
+
+  .nav-logo-icon {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-logo-icon svg { width: 16px; height: 16px; }
+
+  .nav-logo-text {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f1f5f9;
+    letter-spacing: -.01em;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: color .15s, background .15s;
+  }
+
+  .nav-links a:hover { color: #f1f5f9; background: rgba(255,255,255,.06); }
+
+  .nav-cta {
+    background: var(--accent);
+    color: #fff !important;
+    padding: 7px 16px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    transition: background .15s !important;
+  }
+
+  .nav-cta:hover { background: var(--accent-h) !important; color: #fff !important; }
+
+  @media (max-width: 640px) {
+    .nav-links { display: none; }
+  }
+
+  /* ══════════════════════════════════════════
+     HERO
+  ══════════════════════════════════════════ */
+  .hero {
+    position: relative;
+    margin-top: 100px; /* ticker 40 + nav 60 */
+    width: 100%;
+    flex-shrink: 0;
+    background: var(--navy);
+  }
+
+  /* clip the pseudo-element glow without collapsing hero height */
+  .hero-clip {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* diagonal grid overlay */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  /* blue radial glow top-center */
+  .hero::after {
+    content: '';
+    position: absolute;
+    top: -80px; left: 50%;
+    transform: translateX(-50%);
+    width: 700px; height: 400px;
+    background: radial-gradient(ellipse, rgba(29,78,216,.35) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-inner {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 80px 32px 60px;
+    display: flex;
+    align-items: center;
+    gap: 48px;
+    min-height: 420px;
+  }
+
+  .hero-text { flex: 1; max-width: 580px; }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(29,78,216,.2);
+    border: 1px solid rgba(29,78,216,.4);
+    border-radius: 20px;
+    padding: 4px 14px 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #93c5fd;
+    letter-spacing: .04em;
+    margin-bottom: 24px;
+  }
+
+  .hero-badge-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #60a5fa;
+    animation: blink 1.6s ease-in-out infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+  .hero h1 {
+    font-size: clamp(32px, 4.5vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -.03em;
+    color: #f8fafc;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 span {
+    background: linear-gradient(90deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-sub {
+    font-size: 16px;
+    line-height: 1.7;
+    color: #94a3b8;
+    margin-bottom: 36px;
+    max-width: 480px;
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: background .15s, transform .1s;
+  }
+
+  .btn-primary:hover  { background: var(--accent-h); }
+  .btn-primary:active { transform: scale(.98); }
+
+  .btn-ghost {
+    background: rgba(255,255,255,.07);
+    color: #cbd5e1;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: var(--radius);
+    padding: 11px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: background .15s, color .15s;
+  }
+
+  .btn-ghost:hover { background: rgba(255,255,255,.11); color: #f1f5f9; }
+
+  /* Hero chart panel */
+  .hero-chart-panel {
+    flex: 1;
+    max-width: 480px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(0,0,0,.4);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+
+  .panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .panel-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #f1f5f9;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel-change { font-size: 12px; font-weight: 600; color: #34d399; }
+
+  .hero-chart-panel svg { display: block; width: 100%; }
+
+  .hero-strip {
+    background: rgba(255,255,255,.03);
+    border-top: 1px solid rgba(255,255,255,.06);
+    padding: 60px 0 0;
+  }
+
+  .hero-stats {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px 48px;
+    display: flex;
+    gap: 40px;
+    border-top: 1px solid rgba(255,255,255,.06);
+    padding-top: 32px;
+    flex-wrap: wrap;
+  }
+
+  .hero-stat { flex: 1; min-width: 120px; }
+
+  .hero-stat-val {
+    font-size: 22px;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin-bottom: 4px;
+    letter-spacing: -.02em;
+  }
+
+  .hero-stat-label { font-size: 12.5px; color: #64748b; }
+
+  /* ══════════════════════════════════════════
+     MAIN CONTENT
+  ══════════════════════════════════════════ */
+  .main {
+    flex: 1;
+    background: var(--navy);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  /* ── Hero Search ── */
+  .hero-search {
+    position: relative;
+    z-index: 2;
+    border-top: 1px solid rgba(255,255,255,.07);
+    padding: 32px 0;
+  }
+
+  .hero-search-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  .hero-search .search-card {
+    background: rgba(255,255,255,.06);
+    border-color: rgba(255,255,255,.1);
+  }
+
+  .hero-search .search-input {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.12);
+    color: #f1f5f9;
+  }
+
+  .hero-search .search-input::placeholder { color: #64748b; }
+
+  .hero-search .search-input:focus {
+    background: rgba(255,255,255,.1);
+    border-color: var(--accent);
+  }
+
+  .hero-search .search-hint { color: #475569; }
+
+  .hero-search .search-hint-chip {
+    background: rgba(255,255,255,.05);
+    border-color: rgba(255,255,255,.1);
+    color: #94a3b8;
+  }
+
+  .hero-search .search-hint-chip:hover {
+    border-color: var(--accent);
+    color: #93c5fd;
+  }
+
+  .hero-search .search-icon { color: #475569; }
+
+  /* ── Search Section ── */
+  .search-section {
+    padding: 56px 0 0;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  .section-title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .section-sub {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+
+  .search-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: var(--shadow);
+  }
+
+  .search-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .search-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted2);
+    pointer-events: none;
+  }
+
+  .search-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 13px 16px 13px 42px;
+    font-size: 15px;
+    font-family: var(--font);
+    color: var(--text);
+    outline: none;
+    transition: border-color .18s, box-shadow .18s;
+    letter-spacing: .03em;
+    font-weight: 500;
+  }
+
+  .search-input::placeholder { color: var(--muted2); font-weight: 400; letter-spacing: .01em; }
+
+  .search-input:focus {
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(29,78,216,.1);
+  }
+
+  .search-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 13px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .search-btn:hover  { background: var(--accent-h); }
+  .search-btn:active { transform: scale(.98); }
+  .search-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+  .search-hint {
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: var(--muted2);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .search-hint-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 9px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+    letter-spacing: .02em;
+    font-family: monospace;
+  }
+
+  .search-hint-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Result Area ── */
+  .result-area-main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 32px 64px;
+    width: 100%;
+  }
+
+  .result-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60px;
+  }
+
+  /* Spinner */
+  .spinner-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 13.5px;
+  }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2.5px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .65s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error */
+  .error-card {
+    width: 100%;
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .error-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .error-title { font-weight: 600; color: var(--red); margin-bottom: 3px; font-size: 14px; }
+  .error-msg   { color: #6b7280; font-size: 13px; line-height: 1.5; }
+
+  /* Quote Card */
+  .quote-card {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    animation: fadeUp .25s ease;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    background: var(--surface);
+  }
+
+  .card-left {}
+
+  .card-name {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 3px;
+    font-weight: 500;
+  }
+
+  .card-symbol {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.01em;
+    color: var(--text);
+  }
+
+  .card-price-block { text-align: right; }
+
+  .card-price {
+    font-size: 30px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+    line-height: 1;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-badge.pos { color: var(--green); background: var(--green-dim); }
+  .card-badge.neg { color: var(--red);   background: var(--red-dim);   }
+  .card-badge.neu { color: var(--muted); background: #f3f4f6; }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+
+  @media (max-width: 600px) {
+    .card-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .metric {
+    padding: 16px 20px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .metric:nth-child(4n) { border-right: none; }
+
+  @media (max-width: 600px) {
+    .metric:nth-child(4n)  { border-right: 1px solid var(--border); }
+    .metric:nth-child(2n)  { border-right: none; }
+  }
+
+  .metric:nth-last-child(-n+4) { border-bottom: none; }
+
+  @media (max-width: 600px) {
+    .metric:nth-last-child(-n+4) { border-bottom: 1px solid var(--border); }
+    .metric:nth-last-child(-n+2) { border-bottom: none; }
+  }
+
+  .metric-label {
+    font-size: 11px;
+    color: var(--muted2);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 5px;
+    font-weight: 600;
+  }
+
+  .metric-value {
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+  }
+
+  .metric-value.hi { color: var(--green); }
+  .metric-value.lo { color: var(--red); }
+
+  .card-footer {
+    padding: 11px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f9fafb;
+  }
+
+  .card-footer-left { font-size: 11.5px; color: var(--muted2); }
+
+  .exchange-badge {
+    background: #e5e7eb;
+    color: #6b7280;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .07em;
+  }
+
+  /* ══════════════════════════════════════════
+     FEATURES STRIP
+  ══════════════════════════════════════════ */
+  .features-section {
+    border-top: 1px solid var(--border);
+    padding: 56px 0;
+    background: var(--surface);
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+
+  @media (max-width: 768px) {
+    .features-grid { grid-template-columns: 1fr; gap: 24px; }
+  }
+
+  .feature-card {
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+  }
+
+  .feature-icon {
+    width: 40px; height: 40px;
+    border-radius: 8px;
+    background: var(--accent-lt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    font-size: 18px;
+  }
+
+  .feature-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 7px;
+  }
+
+  .feature-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ══════════════════════════════════════════
+     FOOTER
+  ══════════════════════════════════════════ */
+  .footer {
+    background: var(--navy);
+    border-top: 1px solid rgba(255,255,255,.06);
+    padding: 32px 0;
+  }
+
+  .footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .footer-logo {
+    font-size: 14px;
+    font-weight: 700;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .footer-copy { font-size: 12.5px; color: #334155; }
+
+  .footer-links {
+    display: flex;
+    gap: 20px;
+    list-style: none;
+  }
+
+  .footer-links a {
+    font-size: 12.5px;
+    color: #475569;
+    text-decoration: none;
+  }
+
+  .footer-links a:hover { color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<!-- ══ Ticker Bar ══ -->
+<div class="ticker-bar" id="tickerBar">
+  <div class="ticker-track-wrapper">
+    <div class="ticker-track" id="tickerTrack">
+      <span class="ticker-skeleton">Loading market data&hellip;</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Nav ══ -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="#">
+      <div class="nav-logo-icon">
+        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="1,12 5,7 8,9 12,4 15,6" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="nav-logo-text">MarketTicker</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#">Markets</a></li>
+      <li><a href="#">Screener</a></li>
+      <li><a href="#">News</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ══ Hero ══ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-text">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Real-time data
+      </div>
+      <h1>Financial data<br/>for <span>developers</span><br/>&amp; traders</h1>
+      <p class="hero-sub">
+        Real-time stock quotes, company fundamentals, and market analytics —
+        all in one clean dashboard powered by Twelve Data.
+      </p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="document.getElementById('searchInput').focus()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#fff" stroke-width="1.8"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Look Up a Symbol
+        </button>
+      </div>
+    </div>
+
+    <!-- Mini chart panel -->
+    <div class="hero-chart-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4" fill="#34d399"/><circle cx="6" cy="6" r="4" fill="#34d399" opacity="0.4"><animate attributeName="r" values="4;7;4" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite"/></circle></svg>
+          S&amp;P 500 — SPY
+        </div>
+        <div class="panel-price-row">
+          <span class="panel-price" id="heroPanelPrice">—</span>
+          <span class="panel-change" id="heroPanelChange"></span>
+        </div>
+      </div>
+      <svg viewBox="0 0 480 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="heroAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#34d399" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#34d399" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="heroLineGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%"   stop-color="#34d399" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#34d399"/>
+          </linearGradient>
+          <filter id="heroGlow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <!-- grid -->
+        <g stroke="rgba(255,255,255,.05)" stroke-width="1">
+          <line x1="0" y1="45"  x2="480" y2="45"/>
+          <line x1="0" y1="90"  x2="480" y2="90"/>
+          <line x1="0" y1="135" x2="480" y2="135"/>
+          <line x1="96"  y1="0" x2="96"  y2="180"/>
+          <line x1="192" y1="0" x2="192" y2="180"/>
+          <line x1="288" y1="0" x2="288" y2="180"/>
+          <line x1="384" y1="0" x2="384" y2="180"/>
+        </g>
+        <!-- wicks -->
+        <g stroke-width="1.2" opacity="0.6">
+          <line x1="24"  y1="130" x2="24"  y2="105" stroke="#34d399"/>
+          <line x1="56"  y1="135" x2="56"  y2="112" stroke="#34d399"/>
+          <line x1="88"  y1="142" x2="88"  y2="120" stroke="#f87171"/>
+          <line x1="120" y1="128" x2="120" y2="105" stroke="#34d399"/>
+          <line x1="152" y1="118" x2="152" y2="94"  stroke="#34d399"/>
+          <line x1="184" y1="125" x2="184" y2="102" stroke="#f87171"/>
+          <line x1="216" y1="105" x2="216" y2="82"  stroke="#34d399"/>
+          <line x1="248" y1="96"  x2="248" y2="72"  stroke="#34d399"/>
+          <line x1="280" y1="86"  x2="280" y2="62"  stroke="#34d399"/>
+          <line x1="312" y1="78"  x2="312" y2="55"  stroke="#34d399"/>
+          <line x1="344" y1="90"  x2="344" y2="68"  stroke="#f87171"/>
+          <line x1="376" y1="70"  x2="376" y2="46"  stroke="#34d399"/>
+          <line x1="408" y1="60"  x2="408" y2="38"  stroke="#34d399"/>
+          <line x1="440" y1="52"  x2="440" y2="30"  stroke="#34d399"/>
+          <line x1="464" y1="44"  x2="464" y2="22"  stroke="#34d399"/>
+        </g>
+        <!-- bodies -->
+        <g opacity="0.7">
+          <rect x="18"  y="112" width="12" height="16" rx="1" fill="#34d399"/>
+          <rect x="50"  y="118" width="12" height="15" rx="1" fill="#34d399"/>
+          <rect x="82"  y="124" width="12" height="15" rx="1" fill="#f87171"/>
+          <rect x="114" y="111" width="12" height="15" rx="1" fill="#34d399"/>
+          <rect x="146" y="100" width="12" height="16" rx="1" fill="#34d399"/>
+          <rect x="178" y="108" width="12" height="14" rx="1" fill="#f87171"/>
+          <rect x="210" y="88"  width="12" height="15" rx="1" fill="#34d399"/>
+          <rect x="242" y="78"  width="12" height="16" rx="1" fill="#34d399"/>
+          <rect x="274" y="68"  width="12" height="16" rx="1" fill="#34d399"/>
+          <rect x="306" y="61"  width="12" height="15" rx="1" fill="#34d399"/>
+          <rect x="338" y="72"  width="12" height="15" rx="1" fill="#f87171"/>
+          <rect x="370" y="52"  width="12" height="16" rx="1" fill="#34d399"/>
+          <rect x="402" y="42"  width="12" height="16" rx="1" fill="#34d399"/>
+          <rect x="434" y="34"  width="12" height="16" rx="1" fill="#34d399"/>
+          <rect x="458" y="26"  width="12" height="16" rx="1" fill="#34d399"/>
+        </g>
+        <!-- area -->
+        <path d="M0,155 L24,118 L56,122 L88,132 L120,114 L152,102 L184,114 L216,90 L248,80 L280,70 L312,63 L344,76 L376,54 L408,44 L440,36 L464,28 L480,24 L480,180 L0,180 Z"
+              fill="url(#heroAreaGrad)"/>
+        <!-- line -->
+        <path d="M0,155 L24,118 L56,122 L88,132 L120,114 L152,102 L184,114 L216,90 L248,80 L280,70 L312,63 L344,76 L376,54 L408,44 L440,36 L464,28 L480,24"
+              fill="none" stroke="url(#heroLineGrad)" stroke-width="2"
+              stroke-linejoin="round" stroke-linecap="round"
+              filter="url(#heroGlow)"/>
+        <!-- live dot -->
+        <circle cx="480" cy="24" r="3.5" fill="#34d399"/>
+        <circle cx="480" cy="24" r="7" fill="#34d399" opacity="0.2">
+          <animate attributeName="r" values="5;11;5" dur="2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values="0.2;0;0.2" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <!-- volume -->
+        <g opacity="0.15" fill="#34d399">
+          <rect x="18"  y="160" width="12" height="14" rx="1"/>
+          <rect x="50"  y="163" width="12" height="11" rx="1"/>
+          <rect x="82"  y="161" width="12" height="13" rx="1" fill="#f87171"/>
+          <rect x="114" y="164" width="12" height="10" rx="1"/>
+          <rect x="146" y="159" width="12" height="15" rx="1"/>
+          <rect x="178" y="162" width="12" height="12" rx="1" fill="#f87171"/>
+          <rect x="210" y="157" width="12" height="17" rx="1"/>
+          <rect x="242" y="155" width="12" height="19" rx="1"/>
+          <rect x="274" y="158" width="12" height="16" rx="1"/>
+          <rect x="306" y="153" width="12" height="21" rx="1"/>
+          <rect x="338" y="156" width="12" height="18" rx="1" fill="#f87171"/>
+          <rect x="370" y="151" width="12" height="23" rx="1"/>
+          <rect x="402" y="149" width="12" height="25" rx="1"/>
+          <rect x="434" y="147" width="12" height="27" rx="1"/>
+          <rect x="458" y="145" width="12" height="29" rx="1"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Search (inside hero, above stats) -->
+  <div class="hero-search">
+    <div class="hero-search-inner">
+      <div class="search-card">
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="6.5" cy="6.5" r="5" stroke="#9ca3af" stroke-width="1.7"/>
+              <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#9ca3af" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <input
+              class="search-input"
+              id="searchInput"
+              type="text"
+              placeholder="Enter symbol — AAPL, TSLA, NVDA, BTC/USD…"
+              maxlength="12"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="characters"
+              spellcheck="false"
+            />
+          </div>
+          <button class="search-btn" id="searchBtn" onclick="handleSearch()">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#fff" stroke-width="1.8"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Search
+          </button>
+        </div>
+        <div class="search-hint">
+          <span>Try:</span>
+          <span class="search-hint-chip" onclick="quickSearch('AAPL')">AAPL</span>
+          <span class="search-hint-chip" onclick="quickSearch('TSLA')">TSLA</span>
+          <span class="search-hint-chip" onclick="quickSearch('NVDA')">NVDA</span>
+          <span class="search-hint-chip" onclick="quickSearch('MSFT')">MSFT</span>
+          <span class="search-hint-chip" onclick="quickSearch('BTC/USD')">BTC/USD</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- stats strip -->
+  <div class="hero-strip">
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-val">50+</div>
+        <div class="hero-stat-label">Exchanges covered</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val">100k+</div>
+        <div class="hero-stat-label">Global symbols</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val">&lt;50ms</div>
+        <div class="hero-stat-label">Average latency</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-val">99.9%</div>
+        <div class="hero-stat-label">API uptime</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ Main ══ -->
+<main class="main">
+  <div id="resultArea" class="result-area-main"></div>
+
+</main>
+
+<!-- ══ Footer ══ -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-logo">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><polyline points="1,12 5,7 8,9 12,4 15,6" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      MarketTicker
+    </div>
+    <span class="footer-copy">Data provided by Twelve Data. For informational purposes only.</span>
+    <ul class="footer-links">
+      <li><a href="#">Terms</a></li>
+      <li><a href="#">Privacy</a></li>
+      <li><a href="#">API</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+  'use strict';
+
+  const API_KEY  = 'd8kb931r01qjgd6tp8dgd8kb931r01qjgd6tp8e0';
+  const BASE_URL = 'https://api.twelvedata.com';
+
+  const TICKER_SYMBOLS = [
+    { symbol: 'SPY',     label: 'S&P 500 ETF' },
+    { symbol: 'QQQ',     label: 'NASDAQ ETF'  },
+    { symbol: 'DIA',     label: 'DOW ETF'     },
+    { symbol: 'BTC/USD', label: 'Bitcoin'     },
+  ];
+
+  const fmt = {
+    price:  (n, d = 2) => Number(n).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }),
+    volume: n => Number(n).toLocaleString('en-US'),
+    pct:    n => (n >= 0 ? '+' : '') + Number(n).toFixed(2) + '%',
+    chg:    n => (n >= 0 ? '+' : '') + fmt.price(n),
+  };
+
+  function isBtc(sym) { return sym.toUpperCase().includes('BTC'); }
+
+  /* ── Ticker ── */
+  async function fetchTickerQuote(symbol) {
+    const r = await fetch(`${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&apikey=${API_KEY}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if (d.status === 'error') throw new Error(d.message);
+    return d;
+  }
+
+  function buildTickerItem(sym, data) {
+    const price  = parseFloat(data.close ?? 0);
+    const prev   = parseFloat(data.previous_close ?? price);
+    const change = price - prev;
+    const pct    = prev !== 0 ? (change / prev) * 100 : 0;
+    const pos    = change >= 0;
+    return `
+      <span class="ticker-item">
+        <span class="ticker-symbol">${sym.replace('/USD','')}</span>
+        <span class="ticker-price">$${fmt.price(price)}</span>
+        <span class="ticker-change ${pos ? 'pos' : change < 0 ? 'neg' : 'neu'}">
+          ${fmt.chg(change)} (${fmt.pct(pct)})
+        </span>
+      </span>`;
+  }
+
+  async function initTicker() {
+    const results = await Promise.allSettled(
+      TICKER_SYMBOLS.map(t => fetchTickerQuote(t.symbol).then(d => ({ ...t, data: d })))
+    );
+    const items = results.filter(r => r.status === 'fulfilled')
+      .map(r => buildTickerItem(r.value.symbol, r.value.data));
+
+    if (items.length === 0) {
+      document.getElementById('tickerTrack').innerHTML =
+        '<span class="ticker-skeleton">Market data unavailable</span>';
+      return;
+    }
+
+    const html = items.join('') + items.join('');
+    document.getElementById('tickerTrack').innerHTML = html;
+
+    // Update hero panel with SPY data
+    const spy = results.find(r => r.status === 'fulfilled' && r.value.symbol === 'SPY');
+    if (spy) {
+      const d = spy.value.data;
+      const price  = parseFloat(d.close ?? 0);
+      const prev   = parseFloat(d.previous_close ?? price);
+      const change = price - prev;
+      const pct    = prev !== 0 ? (change / prev) * 100 : 0;
+      document.getElementById('heroPanelPrice').textContent = `$${fmt.price(price)}`;
+      const chgEl = document.getElementById('heroPanelChange');
+      chgEl.textContent = `${fmt.chg(change)} (${fmt.pct(pct)})`;
+      chgEl.style.color = change >= 0 ? '#34d399' : '#f87171';
+    }
+
+    const track = document.getElementById('tickerTrack');
+    requestAnimationFrame(() => {
+      const speed = Math.max(20, (track.scrollWidth / 2) / 40);
+      track.style.animationDuration = `${speed}s`;
+    });
+  }
+
+  /* ── Search ── */
+  async function fetchQuote(symbol) {
+    const r = await fetch(`${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&apikey=${API_KEY}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status} — server error`);
+    const d = await r.json();
+    if (d.status === 'error') throw new Error(d.message || `No data found for "${symbol.toUpperCase()}"`);
+    return d;
+  }
+
+  function showSpinner() {
+    document.getElementById('resultArea').innerHTML = `
+      <div class="spinner-wrap">
+        <div class="spinner"></div>
+        <span>Fetching quote&hellip;</span>
+      </div>`;
+  }
+
+  function showError(msg) {
+    document.getElementById('resultArea').innerHTML = `
+      <div class="error-card">
+        <div class="error-icon">⚠️</div>
+        <div>
+          <div class="error-title">Unable to retrieve data</div>
+          <div class="error-msg">${msg}</div>
+        </div>
+      </div>`;
+  }
+
+  function showQuote(symbol, d) {
+    const price  = parseFloat(d.close ?? d.price ?? 0);
+    const prev   = parseFloat(d.previous_close ?? price);
+    const change = price - prev;
+    const pct    = prev !== 0 ? (change / prev) * 100 : 0;
+    const pos    = change > 0, neg = change < 0;
+    const cls    = pos ? 'pos' : neg ? 'neg' : 'neu';
+    const arrow  = pos ? '▲' : neg ? '▼' : '●';
+    const dec    = 2;
+    const name     = d.name && d.name !== symbol ? d.name : '';
+    const exchange = d.exchange ?? '';
+    const ts       = d.datetime ? `As of ${d.datetime}` : '';
+
+    const metrics = [
+      { label: 'Open',           value: `$${fmt.price(d.open ?? 0, dec)}` },
+      { label: 'Prev Close',     value: `$${fmt.price(prev, dec)}` },
+      { label: "Day's High",     value: `$${fmt.price(d.high ?? 0, dec)}`, cls: 'hi' },
+      { label: "Day's Low",      value: `$${fmt.price(d.low  ?? 0, dec)}`, cls: 'lo' },
+      { label: '52-Wk High',     value: d.fifty_two_week?.high ? `$${fmt.price(d.fifty_two_week.high, dec)}` : '—' },
+      { label: '52-Wk Low',      value: d.fifty_two_week?.low  ? `$${fmt.price(d.fifty_two_week.low,  dec)}` : '—' },
+      { label: 'Volume',         value: d.volume         ? fmt.volume(d.volume)         : '—' },
+      { label: 'Avg Volume',     value: d.average_volume ? fmt.volume(d.average_volume) : '—' },
+    ];
+
+    document.getElementById('resultArea').innerHTML = `
+      <div class="quote-card">
+        <div class="card-header">
+          <div class="card-left">
+            ${name ? `<div class="card-name">${name}</div>` : ''}
+            <div class="card-symbol">${symbol.toUpperCase()}</div>
+          </div>
+          <div class="card-price-block">
+            <div class="card-price">$${fmt.price(price, dec)}</div>
+            <span class="card-badge ${cls}">${arrow} ${fmt.chg(change)} &nbsp;(${fmt.pct(pct)})</span>
+          </div>
+        </div>
+        <div class="card-grid">
+          ${metrics.map(m => `
+            <div class="metric">
+              <div class="metric-label">${m.label}</div>
+              <div class="metric-value ${m.cls ?? ''}">${m.value}</div>
+            </div>`).join('')}
+        </div>
+        <div class="card-footer">
+          <span class="card-footer-left">${ts}</span>
+          ${exchange ? `<span class="exchange-badge">${exchange}</span>` : ''}
+        </div>
+      </div>`;
+  }
+
+  async function handleSearch() {
+    const input  = document.getElementById('searchInput');
+    const btn    = document.getElementById('searchBtn');
+    const symbol = input.value.trim().toUpperCase();
+    if (!symbol) { input.focus(); return; }
+    btn.disabled = true;
+    showSpinner();
+    try {
+      showQuote(symbol, await fetchQuote(symbol));
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function quickSearch(sym) {
+    document.getElementById('searchInput').value = sym;
+    handleSearch();
+    document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  document.getElementById('searchInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleSearch();
+  });
+
+  document.getElementById('searchInput').addEventListener('input', function() {
+    const pos = this.selectionStart;
+    this.value = this.value.toUpperCase();
+    this.setSelectionRange(pos, pos);
+  });
+
+  initTicker();
+</script>
+</body>
+</html>
