@@ -1095,7 +1095,7 @@
           <span class="search-hint-chip" onclick="quickSearch('TSLA')">TSLA</span>
           <span class="search-hint-chip" onclick="quickSearch('NVDA')">NVDA</span>
           <span class="search-hint-chip" onclick="quickSearch('MSFT')">MSFT</span>
-          <span class="search-hint-chip" onclick="quickSearch('BTC/USD')">BTC/USD</span>
+          <span class="search-hint-chip" onclick="quickSearch('BINANCE:BTCUSDT')">BTC</span>
         </div>
       </div>
     </div>
@@ -1149,14 +1149,13 @@
 <script>
   'use strict';
 
-  const API_KEY  = 'd8kb931r01qjgd6tp8dgd8kb931r01qjgd6tp8e0';
-  const BASE_URL = 'https://api.twelvedata.com';
+  const BASE_URL = 'https://marketticker-proxy.aluettin.workers.dev';
 
   const TICKER_SYMBOLS = [
     { symbol: 'SPY',     label: 'S&P 500 ETF' },
     { symbol: 'QQQ',     label: 'NASDAQ ETF'  },
     { symbol: 'DIA',     label: 'DOW ETF'     },
-    { symbol: 'BTC/USD', label: 'Bitcoin'     },
+    { symbol: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
   ];
 
   const fmt = {
@@ -1168,24 +1167,35 @@
 
   function isBtc(sym) { return sym.toUpperCase().includes('BTC'); }
 
+  /* ── Finnhub field helpers ── */
+  // Finnhub /quote returns: c=current, pc=prev close, h=high, l=low, o=open, d=change, dp=change%
+  function parseQuote(d) {
+    const price  = parseFloat(d.c ?? 0);
+    const prev   = parseFloat(d.pc ?? price);
+    const change = parseFloat(d.d ?? (price - prev));
+    const pct    = parseFloat(d.dp ?? (prev !== 0 ? (change / prev) * 100 : 0));
+    return { price, prev, change, pct,
+      high: parseFloat(d.h ?? 0),
+      low:  parseFloat(d.l ?? 0),
+      open: parseFloat(d.o ?? 0),
+    };
+  }
+
   /* ── Ticker ── */
   async function fetchTickerQuote(symbol) {
-    const r = await fetch(`${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&apikey=${API_KEY}`);
+    const r = await fetch(`${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}`);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    if (d.status === 'error') throw new Error(d.message);
+    if (d.error) throw new Error(d.error);
     return d;
   }
 
   function buildTickerItem(sym, data) {
-    const price  = parseFloat(data.close ?? 0);
-    const prev   = parseFloat(data.previous_close ?? price);
-    const change = price - prev;
-    const pct    = prev !== 0 ? (change / prev) * 100 : 0;
-    const pos    = change >= 0;
+    const { price, change, pct } = parseQuote(data);
+    const pos = change >= 0;
     return `
       <span class="ticker-item">
-        <span class="ticker-symbol">${sym.replace('/USD','')}</span>
+        <span class="ticker-symbol">${sym.replace('BINANCE:','').replace('USDT','')}</span>
         <span class="ticker-price">$${fmt.price(price)}</span>
         <span class="ticker-change ${pos ? 'pos' : change < 0 ? 'neg' : 'neu'}">
           ${fmt.chg(change)} (${fmt.pct(pct)})
@@ -1212,11 +1222,7 @@
     // Update hero panel with SPY data
     const spy = results.find(r => r.status === 'fulfilled' && r.value.symbol === 'SPY');
     if (spy) {
-      const d = spy.value.data;
-      const price  = parseFloat(d.close ?? 0);
-      const prev   = parseFloat(d.previous_close ?? price);
-      const change = price - prev;
-      const pct    = prev !== 0 ? (change / prev) * 100 : 0;
+      const { price, change, pct } = parseQuote(spy.value.data);
       document.getElementById('heroPanelPrice').textContent = `$${fmt.price(price)}`;
       const chgEl = document.getElementById('heroPanelChange');
       chgEl.textContent = `${fmt.chg(change)} (${fmt.pct(pct)})`;
@@ -1232,10 +1238,11 @@
 
   /* ── Search ── */
   async function fetchQuote(symbol) {
-    const r = await fetch(`${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}&apikey=${API_KEY}`);
+    const r = await fetch(`${BASE_URL}/quote?symbol=${encodeURIComponent(symbol)}`);
     if (!r.ok) throw new Error(`HTTP ${r.status} — server error`);
     const d = await r.json();
-    if (d.status === 'error') throw new Error(d.message || `No data found for "${symbol.toUpperCase()}"`);
+    // Finnhub returns all zeros for unknown symbols
+    if (!d.c || d.c === 0) throw new Error(`No data found for "${symbol.toUpperCase()}"`);
     return d;
   }
 
@@ -1259,34 +1266,24 @@
   }
 
   function showQuote(symbol, d) {
-    const price  = parseFloat(d.close ?? d.price ?? 0);
-    const prev   = parseFloat(d.previous_close ?? price);
-    const change = price - prev;
-    const pct    = prev !== 0 ? (change / prev) * 100 : 0;
+    const { price, prev, change, pct, high, low, open } = parseQuote(d);
     const pos    = change > 0, neg = change < 0;
     const cls    = pos ? 'pos' : neg ? 'neg' : 'neu';
     const arrow  = pos ? '▲' : neg ? '▼' : '●';
     const dec    = 2;
-    const name     = d.name && d.name !== symbol ? d.name : '';
-    const exchange = d.exchange ?? '';
-    const ts       = d.datetime ? `As of ${d.datetime}` : '';
+    const ts     = d.t ? `As of ${new Date(d.t * 1000).toLocaleString()}` : '';
 
     const metrics = [
-      { label: 'Open',           value: `$${fmt.price(d.open ?? 0, dec)}` },
-      { label: 'Prev Close',     value: `$${fmt.price(prev, dec)}` },
-      { label: "Day's High",     value: `$${fmt.price(d.high ?? 0, dec)}`, cls: 'hi' },
-      { label: "Day's Low",      value: `$${fmt.price(d.low  ?? 0, dec)}`, cls: 'lo' },
-      { label: '52-Wk High',     value: d.fifty_two_week?.high ? `$${fmt.price(d.fifty_two_week.high, dec)}` : '—' },
-      { label: '52-Wk Low',      value: d.fifty_two_week?.low  ? `$${fmt.price(d.fifty_two_week.low,  dec)}` : '—' },
-      { label: 'Volume',         value: d.volume         ? fmt.volume(d.volume)         : '—' },
-      { label: 'Avg Volume',     value: d.average_volume ? fmt.volume(d.average_volume) : '—' },
+      { label: 'Open',       value: `$${fmt.price(open, dec)}` },
+      { label: 'Prev Close', value: `$${fmt.price(prev, dec)}` },
+      { label: "Day's High", value: `$${fmt.price(high, dec)}`, cls: 'hi' },
+      { label: "Day's Low",  value: `$${fmt.price(low,  dec)}`, cls: 'lo' },
     ];
 
     document.getElementById('resultArea').innerHTML = `
       <div class="quote-card">
         <div class="card-header">
           <div class="card-left">
-            ${name ? `<div class="card-name">${name}</div>` : ''}
             <div class="card-symbol">${symbol.toUpperCase()}</div>
           </div>
           <div class="card-price-block">
@@ -1303,7 +1300,6 @@
         </div>
         <div class="card-footer">
           <span class="card-footer-left">${ts}</span>
-          ${exchange ? `<span class="exchange-badge">${exchange}</span>` : ''}
         </div>
       </div>`;
   }
